@@ -31,9 +31,13 @@ badge app  ──▶  badge server  ──▶  your worker  ──▶  Connect  
 
 You need a badge, a free Cloudflare account, a GitHub account, and a Quidli Connect account.
 
-**Your Connect API key:** sign in at [connect.quid.li](https://connect.quid.li) and open the
-**API Dashboard** tab at the top. The key starts with `QC_`. Keep it secret: it's the only
-thing that can spend from your Connect wallet, and it goes into your worker, never the badge.
+**Get your Connect account ready** at [connect.quid.li](https://connect.quid.li):
+
+1. Sign in, with X if you can (see [Getting paid](#getting-paid)).
+2. **Smart Send** tab, **Configuration**: turn on **Enable Smart Send**. It lets Connect send
+   from your Connect wallet when your worker asks; without it every payment fails.
+3. **API Dashboard** tab: copy your API key (it starts with `QC_`). Keep it secret: it can
+   spend from your Connect wallet. It goes into your worker, never onto the badge.
 
 > **Treat it like pocket money.** The badge has no PIN or lock: whoever holds it can send
 > everything in the wallet behind it. Use a separate Connect account just for the badge, and
@@ -60,7 +64,8 @@ address. The screen should say "The worker accepts this badge."
 
 **4. Add funds.** In the app: **Add funds** shows your Connect wallet's Solana address as a QR
 code. Scan it with your phone's wallet app (Phantom, Solflare, ...) and send SOL and any
-token you want to pay with. They show up on the badge, ready to send.
+token you want to pay with. They show up on the badge, ready to send. (The same address is
+on connect.quid.li under **Smart Send**, **Smart Send wallet**, **Solana**.)
 
 That's all. To let another badge in later, or change the key, edit the setting in the
 Cloudflare dashboard: your worker, **Settings**, **Variables and Secrets**.
@@ -89,6 +94,16 @@ balance next to it. There's nothing to configure.
 - Token-2022 tokens can't be sent yet. The list shows up to 8 tokens, SOL first.
 - A Connect key allows 20 requests a minute. A payment takes a few, so that's plenty for one
   badge, not for a crowd sharing one key.
+
+## Getting paid
+
+Payments go to an **X account**, not to a badge. Connect finds the wallet that belongs to
+that X account, and makes one if the person has never used Connect. They don't need a badge,
+an app or a wallet, and don't have to do anything first.
+
+To see and spend what they were sent, they sign in at [connect.quid.li](https://connect.quid.li)
+**with that X account**: it's the same wallet, already holding the payment. If they have a
+badge too, the setup above (about 10 minutes) lets them pay it forward from there.
 
 ## Safety
 
