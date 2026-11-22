@@ -1,7 +1,7 @@
 {
   "id": "solbadge-pay",
   "name": "SolBadge Pay",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "author": "@justinquidli",
   "summary": "Contactless Solana payments: pay nearby badges or anyone on X",
   "icon": "gift",

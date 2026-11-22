@@ -195,9 +195,17 @@ local function worker()
   return storage.get("worker")
 end
 
+-- A call that fails is printed to the console under Run on badge, for troubleshooting.
 local function api(method, path, body, cb)
-  http.request({method = method, url = worker() .. path, body = body}, function(ok, res)
-    if not ok then return cb(nil, res) end
+  local url = worker() .. path
+  http.request({method = method, url = url, body = body}, function(ok, res)
+    if not ok then
+      print(method .. " " .. url .. " -> no answer: " .. tostring(res))
+      return cb(nil, res)
+    end
+    if res.status ~= 200 then
+      print(method .. " " .. url .. " -> " .. tostring(res.status) .. " " .. (res.body or ""):sub(1, 120))
+    end
     local data = json.decode(res.body or "")
     cb(res.status, type(data) == "table" and data or {})
   end)
