@@ -1,7 +1,7 @@
 {
   "id": "connect-pay",
   "name": "Connect Pay",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": "@justinquidli",
   "summary": "Contactless Solana payments: pay nearby badges or anyone on X",
   "icon": "gift",

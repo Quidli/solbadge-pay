@@ -456,7 +456,7 @@ end
 pick("Other amount") typed(nil)
 check("cancelling the keyboard does nothing", not B.dialog)
 key("back") key("back") key("back")
-sees("three backs return home", "Pay anyone by their handle")
+sees("three backs return home", "Contactless Solana payments")
 to_amount("SOL", "0.005")
 sees("SOL confirm names Solana", "Send 0.005 SOL to @quidliprotocol on Solana?")
 key("select")
@@ -638,36 +638,53 @@ key("back") key("back")
 pick("This badge")
 sees("setup says the badge is in but the wallet is empty", "The worker accepts this badge. The Connect wallet has nothing")
 
--- 10. Add funds: the wallet's address as a QR code, to scan with a phone wallet.
+-- 10. Wallet: balances, and Add funds with the wallet's address as a QR code.
 local WALLET = "Badge4BJRYfnu29GPWdksz7EMUbiqx5CKSZgov3AHQXe"
 launch()
 B.respond = a_worker({SENT})
+pick("Wallet")
+sees("the wallet lists what's ready to send", "Add funds Show your wallet's QR code  | SOL  0.052096561 | Bonk  1234567.89012 | USDC  10")
+sees("...and says SOL is kept for fees", "0.01 SOL is kept for fees")
+local before = #B.sent
+pick("USDC")
+check("a balance row does nothing", #B.sent == before and screen():find("Ready to send", 1, true))
+key("back")
+B.sent = {}
+pick("Wallet")
+check("balances are asked for fresh on every visit", #B.sent == 1 and B.sent[1].path == "/assets")
 pick("Add funds")
 sees("the wallet's address is a QR code", "[qr " .. WALLET .. "]")
 sees("...and written out, to check against the phone", "Badge4BJRYf | nu29GPWdksz | 7EMUbiqx5CK | SZgov3AHQXe")
 sees("it says what to send", "any SPL token")
 key("back")
+sees("back from Add funds is the wallet", "Ready to send")
 pick("Add funds")                         -- the stub refuses a second live QR code, so this proves the first went
 sees("opening it again draws it again", "[qr " .. WALLET .. "]")
-key("back")
--- An empty wallet still shows where to send.
+key("back") key("back")
+-- An empty wallet: say so, and still show where to send.
 B.respond = function(r) return {status = 200, body = EMPTY:sub(1, -2) .. ',"wallet":"' .. WALLET .. '"}'} end
+pick("Wallet")
+sees("an empty wallet is explained", "nothing to send on Solana yet")
+check("...with Add funds the only row", #focused().it == 1)
 pick("Add funds")
 sees("an empty wallet still gets its QR code", "[qr " .. WALLET .. "]")
-key("back")
+key("back") key("back")
 -- Older Solana OS: no ui.qr. The address alone.
 ui.qr = nil
-pick("Add funds")
+pick("Wallet") pick("Add funds")
 sees("without QR codes, the address and why", "Update Solana OS to show it as a QR code.")
 sees("...still written out", "Badge4BJRYf")
 ui.qr = qr
-key("back")
+key("back") key("back")
 -- No address in the answer: say so, never draw a bad code.
 B.respond = function(r) return {status = 200, body = '{"text":"Connect refused the worker\'s API key."}'} end
+pick("Wallet")
+sees("a refused key is explained in the wallet", "Connect refused the worker's API key.")
 pick("Add funds")
 sees("no address: the worker's words", "Connect refused the worker's API key.")
 check("no QR code without an address", not screen():find("[qr", 1, true))
-key("back")
+key("back") key("back")
+sees("back home", "Contactless Solana payments")
 
 check("no key in any request or in storage, to the end", no_secrets())
 on_exit()

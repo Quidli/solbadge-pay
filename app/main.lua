@@ -4,7 +4,7 @@
 -- reputation, choose a token and an amount, confirm. Connect pays their X
 -- account from your Connect wallet. The badge holds no key: it asks your own
 -- worker, which recognises this badge by the badge server's signature and
--- calls Connect. Add funds shows the wallet's address as a QR code.
+-- calls Connect. Wallet shows the balances, and the address as a QR code.
 -- Setup and docs: https://github.com/Quidli/connectpay-solanabadge
 --
 -- Permissions: http, mesh, profile, led.   Hosts: your worker's host.
@@ -604,8 +604,35 @@ local function funds_screen()
   end)
 end
 
+-- Wallet: what the Connect wallet holds, ready to send, asked for fresh on
+-- every visit; Add funds comes first.
+local function wallet_screen()
+  title("Wallet")
+  local line = ui.label(10, 32, "Asking the worker...", {w = ui.W - 20, color = "dim"})
+  local add = {title = "Add funds", sub = "Show your wallet's QR code"}
+  local list = ui.list(0, 56, ui.W, ui.H - 72, {add}, {on_select = function(i)
+    if i == 1 then go(funds_screen) end
+  end})
+  ui.hint("SELECT add funds   CANCEL back")
+  local here = showing()
+  when_online(function(up)
+    if not here() then return end
+    if not up then return line:text(why("offline")) end
+    api("GET", "/assets", nil, function(status, data)
+      if not here() then return end
+      if not status then return line:text(why(data)) end
+      if status ~= 200 or not usable(data.assets) then return line:text(told(data, status)) end
+      assets = data.assets
+      line:text("Ready to send (0.01 SOL is kept for fees)")
+      local rows = {add}
+      for i, a in ipairs(assets) do rows[i + 1] = {title = a.label, right = a.max} end
+      list:items(rows)
+    end)
+  end)
+end
+
 local function home_screen()
-  title("Connect Pay", "Pay anyone by their handle")
+  title("Connect Pay", "Contactless Solana payments")
   local p = storage.get("pending")
   local rows, acts = {}, {}
   local function row(r, act) rows[#rows + 1] = r acts[#acts + 1] = act end
@@ -626,7 +653,7 @@ local function home_screen()
         go(recipient_screen, handle)
       end)
     end)
-    row({title = "Add funds", sub = "Top up your Connect wallet"}, function() go(funds_screen) end)
+    row({title = "Wallet", sub = "Balances, and add funds"}, function() go(wallet_screen) end)
     row({title = "This badge", right = badge.id() or "no id"}, function() go(setup_screen) end)
   end
   ui.list(0, 56, ui.W, ui.H - 72, rows, {on_select = function(i) acts[i]() end})

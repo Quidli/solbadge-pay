@@ -56,19 +56,22 @@ screen shows **Set up**, with your badge id under it (like `7K2Q9M`).
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Quidli/connectpay-solanabadge/tree/main/worker)
 
 It copies this worker into your GitHub account, deploys it, and asks for two settings:
-`CONNECT_API_KEY` (your Connect key) and `BADGE_IDS` (your badge id). When it's done it
-shows the worker's address, like `connect-pay.you.workers.dev`.
+`CONNECT_API_KEY` (your Connect key) and `BADGE_IDS` (your badge id). Pick **"Create private
+Git repository"** and a **short project name**, like `pay`: you'll type the worker's address
+on the badge's buttons. When it's done, the address is on the worker's **Domains** tab, like
+`pay.you.workers.dev`.
 
 **3. Point the badge at it.** In the app: **Set up**, **Enter worker address**, type the
 address. The screen should say "The worker accepts this badge."
 
-**4. Add funds.** In the app: **Add funds** shows your Connect wallet's Solana address as a QR
-code. Scan it with your phone's wallet app (Phantom, Solflare, ...) and send SOL and any
-token you want to pay with. They show up on the badge, ready to send. (The same address is
+**4. Add funds.** In the app: **Wallet**, then **Add funds**, shows your Connect wallet's Solana
+address as a QR code. Scan it with your phone's wallet app (Phantom, Solflare, ...) and send SOL and any
+token you want to pay with. They show up under **Wallet**, ready to send. (The same address is
 on connect.quid.li under **Smart Send**, **Smart Send wallet**, **Solana**.)
 
-That's all. To let another badge in later, or change the key, edit the setting in the
-Cloudflare dashboard: your worker, **Settings**, **Variables and Secrets**.
+That's all. To let another badge in later, or change the key, open your worker in the
+Cloudflare dashboard: **Settings**, **Variables and Secrets**, edit the setting and press
+**Rotate**. Secrets can't be read back, only replaced. Several badges: `2S19S2,7K2Q9M`.
 
 <details>
 <summary>Deploy from the command line instead</summary>
