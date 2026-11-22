@@ -1,4 +1,4 @@
--- Solana Badge Pay: contactless Solana payments from the badge, through Quidli Connect.
+-- SolBadge Pay: contactless Solana payments from the badge, through Quidli Connect.
 --
 -- Pick a nearby badge (or type an X username), see the owner's social
 -- reputation, choose a token and an amount, confirm. Connect pays their X
@@ -634,7 +634,7 @@ local function wallet_screen()
 end
 
 local function home_screen()
-  title("Solana Badge Pay", "Contactless Solana payments")
+  title("SolBadge Pay", "Contactless Solana payments")
   local p = storage.get("pending")
   local rows, acts = {}, {}
   local function row(r, act) rows[#rows + 1] = r acts[#acts + 1] = act end

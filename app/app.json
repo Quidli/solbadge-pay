@@ -1,6 +1,6 @@
 {
   "id": "connect-pay",
-  "name": "Solana Badge Pay",
+  "name": "SolBadge Pay",
   "version": "0.3.2",
   "author": "@justinquidli",
   "summary": "Contactless Solana payments: pay nearby badges or anyone on X",

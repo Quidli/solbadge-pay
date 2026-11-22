@@ -426,7 +426,7 @@ sees("success screen", "Sent")
 check("pending cleared after success", storage.get("pending") == nil)
 check("LEDs on", B.leds == "on")
 key("select")
-sees("done returns home", "Solana Badge Pay")
+sees("done returns home", "SolBadge Pay")
 check("home no longer offers an unfinished payment", not screen():find("Unfinished"))
 local asked = 0
 for _, r in ipairs(B.sent) do if r.path == "/assets" then asked = asked + 1 end end

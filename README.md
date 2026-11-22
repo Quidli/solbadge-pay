@@ -1,6 +1,6 @@
 <img src="assets/icon.svg" width="64" height="64" alt="">
 
-# Solana Badge Pay
+# SolBadge Pay
 
 Pay anyone by their X handle from a [Breakpoint 2026 badge](https://solana.com/breakpoint/badge),
 through [Quidli Connect](https://connect.quid.li). Pick a badge nearby or type a handle, see
@@ -43,10 +43,10 @@ You need a badge, a free Cloudflare account, a GitHub account, and a Quidli Conn
 > everything in the wallet behind it. Use a separate Connect account just for the badge, and
 > keep only what you'd be fine losing if you left the badge on a table.
 
-**1. Get your badge's id.** Install **Solana Badge Pay** on the badge and open it. The home
+**1. Get your badge's id.** Install **SolBadge Pay** on the badge and open it. The home
 screen shows **Set up**, with your badge id under it (like `7K2Q9M`).
 
-> Until Solana Badge Pay is in the badge store, load it yourself: on the badge site, open
+> Until SolBadge Pay is in the badge store, load it yourself: on the badge site, open
 > `/apps/submit` signed in with X linked, drop the `app/` folder on it, and press
 > **Run on badge**. Apps loaded this way can only reach the network during a 12-hour test
 > run, which **Run on badge** starts and renews.

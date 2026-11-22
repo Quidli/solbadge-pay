@@ -12,7 +12,7 @@
         "description": "Your Connect API key: [connect.quid.li](https://connect.quid.li) > **Enable API access**. Use an account funded with small amounts only."
       },
       "BADGE_IDS": {
-        "description": "Your badge's id, from **Set up** in the Solana Badge Pay app on the badge, e.g. `7K2Q9M`. Several: separate with commas."
+        "description": "Your badge's id, from **Set up** in the SolBadge Pay app on the badge, e.g. `7K2Q9M`. Several: separate with commas."
       }
     }
   }
