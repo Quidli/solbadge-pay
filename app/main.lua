@@ -5,12 +5,12 @@
 -- account from your Connect wallet. The badge holds no key: it asks your own
 -- worker, which recognises this badge by the badge server's signature and
 -- calls Connect. Wallet shows the balances, and the address as a QR code.
--- Setup and docs: https://github.com/Quidli/connectpay-solanabadge
+-- Setup and docs: https://github.com/Quidli/solbadge-pay
 --
 -- Permissions: http, mesh, profile, led.   Hosts: your worker's host.
 
 -- Your worker's address. Leave it empty to type it on the badge once (This
--- badge > Worker address), or fix it here, e.g. "https://connect-pay.me.workers.dev".
+-- badge > Worker address), or fix it here, e.g. "https://solbadge-pay.me.workers.dev".
 -- Either way the worker's host has to be covered by "hosts" in app.json.
 local WORKER = ""
 

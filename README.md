@@ -2,15 +2,17 @@
 
 # SolBadge Pay
 
-Pay anyone by their X handle from a [Breakpoint 2026 badge](https://solana.com/breakpoint/badge),
-through [Quidli Connect](https://connect.quid.li). Pick a badge nearby or type a handle, see
-their social reputation, choose an amount, confirm. No phone, no wallet signature, and no
-key on the badge.
+**Contactless Solana payments from your [Breakpoint 2026 badge](https://solana.com/breakpoint/badge).**
+Pick a nearby badge, or type an X username, and send SOL or any SPL token. No phone, no wallet
+signature, no address needed, and no key on the badge.
+
+Payments go to the person's X account through [Quidli Connect](https://connect.quid.li); they
+sign in with X to use them (see [Getting paid](#getting-paid)).
 
 This is a reference client for **Quidli Connect on Solana**: send SOL or any SPL token to an
-X handle with one API call, no wallet signature, and Connect resolves the handle to a wallet. The
-badge is the smallest client we could think of. The same calls work from any app, bot or
-server: see [connect.quid.li](https://connect.quid.li).
+X account with one API call, no wallet signature, and Connect resolves the account to a
+wallet. The badge is the smallest client we could think of. The same calls work from any
+app, bot or server: see [connect.quid.li](https://connect.quid.li).
 
 ## How it works
 
@@ -53,7 +55,7 @@ screen shows **Set up**, with your badge id under it (like `7K2Q9M`).
 
 **2. Deploy your worker.**
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Quidli/connectpay-solanabadge/tree/main/worker)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Quidli/solbadge-pay/tree/main/worker)
 
 It copies this worker into your GitHub account, deploys it, and asks for two settings:
 `CONNECT_API_KEY` (your Connect key) and `BADGE_IDS` (your badge id). Pick **"Create private

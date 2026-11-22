@@ -11,7 +11,7 @@ signed `X-Badge-*` headers (see `docs/LUA_API.md` in
 [solana-os](https://github.com/solana-foundation/solana-os), "What your server receives").
 The worker accepts a request only when all of these hold:
 
-1. `X-Badge-App` is the app's id (`connect-pay`).
+1. `X-Badge-App` is the app's id (`solbadge-pay`).
 2. `X-Badge-Time` is within 60 s of now.
 3. The Ed25519 signature in `X-Badge-Signature` verifies, with the key named by
    `X-Badge-Key` from `https://badge-api.solana.com/api/http/key`, over these lines

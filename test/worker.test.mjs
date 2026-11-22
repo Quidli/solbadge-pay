@@ -5,9 +5,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import worker, { fromUnits, quickPicks, scoreLine } from '../worker/worker.js';
 
-const HOST = 'https://connect-pay.example.workers.dev';
+const HOST = 'https://solbadge-pay.example.workers.dev';
 const KEY = 'test-connect-key';
-const ENV = { CONNECT_API_KEY: KEY, BADGE_IDS: '7K2Q9M, 4HX2PD' }; // APP_ID left out: the default is connect-pay
+const ENV = { CONNECT_API_KEY: KEY, BADGE_IDS: '7K2Q9M, 4HX2PD' }; // APP_ID left out: the default is solbadge-pay
 const SCORE = readFileSync(new URL('./data/score.json', import.meta.url), 'utf8');
 const BALANCE = readFileSync(new URL('./data/balance.json', import.meta.url), 'utf8'); // Connect's GET /drop/balance
 const USDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
@@ -36,7 +36,7 @@ globalThis.fetch = async (url, init = {}) => {
 
 let counter = 0;
 /** A request as the badge server sends it. `over` changes it after signing. */
-async function badge(method, path, body, { id = '7K2Q9M', app = 'connect-pay', time = Date.now(), over = {} } = {}) {
+async function badge(method, path, body, { id = '7K2Q9M', app = 'solbadge-pay', time = Date.now(), over = {} } = {}) {
   const text = body === undefined ? '' : JSON.stringify(body);
   const request = (counter++).toString(16).padStart(16, '0');
   const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));

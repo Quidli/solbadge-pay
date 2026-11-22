@@ -337,7 +337,7 @@ local function pays() local out = {} for _, r in ipairs(B.sent) do if r.path == 
 
 
 local ASSETS = assert(host_read(DATA .. "/assets.json"), "missing assets.json (the worker's list)")
-local ADDR = "https://connect-pay.justin.workers.dev"
+local ADDR = "https://solbadge-pay.justin.workers.dev"
 local allowed = true
 
 -- The worker, to its contract (worker/worker.js; its own checks are in worker.test.mjs).
@@ -387,7 +387,7 @@ pick("Enter worker address")
 typed("not an address")
 check("a bad address is refused", B.toasts[#B.toasts] == "That isn't an address" and storage.get("worker") == nil)
 pick("Enter worker address")
-typed("HTTPS://Connect-Pay.Justin.workers.dev/")
+typed("HTTPS://SolBadge-Pay.Justin.workers.dev/")
 check("the address is stored clean", storage.get("worker") == ADDR, storage.get("worker"))
 sees("the worker lets the badge in", "The worker accepts this badge.")
 allowed = false
@@ -619,7 +619,7 @@ pick("This badge") pick("Change worker address")
 typed("pay.example.com")
 sees("an uncovered host is explained", "don't cover this worker")
 pick("Change worker address")
-typed("connect-pay.justin.workers.dev")
+typed("solbadge-pay.justin.workers.dev")
 sees("back on a covered host", "The worker accepts this badge.")
 key("back")
 B.respond = function(r) return {status = 200, body = '{"assets":[{"id":"x","label":"X"}]}'} end
