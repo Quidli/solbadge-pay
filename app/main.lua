@@ -254,7 +254,7 @@ local function send(p, done)
     if status ~= 200 then return refused(told(data, status)) end   -- the worker turned it away
     if data.state == "sent" then
       storage.remove("pending")
-      return done("sent")
+      return done("sent", nil, data.tx)
     end
     if data.state == "processing" then    -- accepted, nothing sent yet
       p.maybe = before
@@ -278,13 +278,20 @@ local function sending_screen()
   local tries = 0
   local attempt
 
-  local function finish(state, text)
+  local function finish(state, text, tx)
     if not here() then return end
     if state == "sent" then
       assets = nil                        -- the balances changed
       line:text("Sent")
       line:color("green")
       detail:text(what .. " on " .. chain)
+      -- The receipt: the transaction on Solscan, as a QR code to scan with a phone.
+      if ui.qr and type(tx) == "string" and #tx <= 90 and not tx:find("[^1-9A-HJ-NP-Za-km-z]") then
+        detail:remove()
+        ui.label(10, 96, what .. " on " .. chain, {w = 140, color = "dim"})
+        ui.label(10, 160, "Scan for the receipt", {w = 140, color = "dim"})
+        ui.qr(160, 48, 154, "https://solscan.io/tx/" .. tx)   -- as big as fits: about 3 px a square
+      end
       led.fill(0x14, 0xF1, 0x95)
       timer.after(1500, led.off)
       ui.hint("SELECT done")

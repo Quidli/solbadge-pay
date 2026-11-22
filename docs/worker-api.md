@@ -91,7 +91,7 @@ The answer is always 200 with a `state`:
 
 | `state` | Meaning | What the app does |
 | --- | --- | --- |
-| `sent` | Connect accepted the payment | Done; forgets it |
+| `sent` | Connect sent it; `tx` is the Solana transaction when Connect gave one | Done; forgets it, shows `tx` as a Solscan QR code |
 | `processing` | Connect is setting up the recipient; nothing sent yet | Asks again with the same id shortly |
 | `failed` | This request sent nothing (bad input, Connect refused) | Forgets it, unless an earlier try may have gone through |
 | `unknown` | No final answer (Connect timed out or answered 5xx) | Keeps it and offers a retry with the same id |

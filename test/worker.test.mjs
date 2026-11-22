@@ -197,6 +197,13 @@ test('/pay turns Connect\'s answers into what the badge should do next', async (
   const state = async (answer) => { reset(() => answer); return (await call(await badge('POST', '/pay', PAYMENT))).data; };
   assert.equal((await state({ status: 200, body: '{}' })).state, 'sent');
   assert.equal((await state({ status: 202, body: '{}' })).state, 'processing');
+  const TX = '2WCfB21hUguybnTtWddyps9pkFKNBFF8Qbo2KiSBtLTeNEceyaJVVgzdgKk9xioyKpLWsnQxPWTthQBnaNDf3tT5';
+  assert.deepEqual(await state({ status: 201, body: JSON.stringify({ transferHash: TX, status: 'success' }) }), { state: 'sent', tx: TX },
+    'the transaction goes to the badge, for its receipt');
+  assert.deepEqual(await state({ status: 201, body: '{"transferHash":"<b>not a hash</b>","status":"success"}' }), { state: 'sent' });
+  assert.deepEqual(await state({ status: 201, body: JSON.stringify({ transferHash: TX, status: 'failed' }) }), { state: 'failed', text: "Connect couldn't send it." });
+  assert.deepEqual(await state({ status: 201, body: '{"transferHash":"","status":"partial","failedRecipients":[{"type":"twitter","username":"quidliprotocol"}]}' }),
+    { state: 'failed', text: "Connect couldn't send to @quidliprotocol." });
   assert.deepEqual(await state('timeout'), { state: 'unknown', text: "Connect didn't answer in time." });
   assert.deepEqual(await state({ status: 502, body: '<html>bad gateway</html>' }), { state: 'unknown', text: 'Connect answered 502' });
   assert.deepEqual(await state({ status: 400, body: '{"message":"Insufficient funds"}' }),

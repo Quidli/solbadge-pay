@@ -360,6 +360,8 @@ local function a_worker(pay_answers)
   end
 end
 local SENT = {status = 200, body = '{"state":"sent"}'}
+local TX = "2WCfB21hUguybnTtWddyps9pkFKNBFF8Qbo2KiSBtLTeNEceyaJVVgzdgKk9xioyKpLWsnQxPWTthQBnaNDf3tT5"
+local SENT_TX = {status = 200, body = '{"state":"sent","tx":"' .. TX .. '"}'}
 local USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 local PROCESSING = {status = 200, body = '{"state":"processing"}'}
 local function FAILED(text) return {status = 200, body = J.encode({state = "failed", text = text})} end
@@ -641,6 +643,21 @@ sees("an empty wallet is explained on the asset screen", "nothing to send on Sol
 key("back") key("back")
 pick("This badge")
 sees("setup says the badge is in but the wallet is empty", "The worker accepts this badge. The Connect wallet has nothing")
+
+-- 9b. The receipt: a sent payment shows its transaction on Solscan as a QR code.
+launch()
+B.respond = a_worker({SENT_TX})
+to_amount("USDC") pick("1 USDC") key("select")
+sees("sent", "Sent")
+sees("the receipt is a QR code of the transaction", "[qr https://solscan.io/tx/" .. TX .. "]")
+sees("...and says what it is", "Scan for the receipt")
+key("select")
+sees("done returns home, the QR code gone", "Contactless Solana payments")
+check("no QR code left on home", not screen():find("[qr", 1, true))
+B.respond = a_worker({{status = 200, body = '{"state":"sent","tx":"<script>"}'}})
+to_amount("USDC") pick("1 USDC") key("select")
+check("a malformed transaction id draws no QR code", screen():find("Sent", 1, true) and not screen():find("[qr", 1, true), screen())
+key("select")
 
 -- 10. Wallet: balances, and Add funds with the wallet's address as a QR code.
 local WALLET = "Badge4BJRYfnu29GPWdksz7EMUbiqx5CKSZgov3AHQXe"
