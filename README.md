@@ -64,12 +64,21 @@ on the badge's buttons. When it's done, the address is on the worker's **Domains
 `pay.you.workers.dev`.
 
 **3. Point the badge at it.** In the app: **Set up**, **Enter worker address**, type the
-address. The screen should say "The worker accepts this badge."
+address without `.workers.dev` (the app adds it): `pay.you`. The screen should say "The
+worker accepts this badge."
 
 **4. Add funds.** In the app: **Wallet**, then **Add funds**, shows your Connect wallet's Solana
-address as a QR code. Scan it with your phone's wallet app (Phantom, Solflare, ...) and send SOL and any
-token you want to pay with. They show up under **Wallet**, ready to send. (The same address is
-on connect.quid.li under **Smart Send**, **Smart Send wallet**, **Solana**.)
+address as a QR code. Scan it with your phone's wallet app (Phantom, Solflare, ...) and send the
+tokens you want to pay with, **and always some SOL** (0.05 SOL is plenty to start). They show up
+under **Wallet**, ready to send. (The same address is on connect.quid.li under **Smart Send**,
+**Smart Send wallet**, **Solana**.)
+
+> **Why SOL, even to pay in USDC?** On Solana every payment pays its network fee in SOL (a
+> tiny amount). And the first time someone receives a token, a small account for it has to be
+> opened in their wallet, which costs about 0.002 SOL; that SOL stays with them. So 0.05 SOL
+> covers about 20 payments to people who never had that token. The badge keeps 0.01 SOL
+> aside for this, shows the fee before you confirm, and warns you under **Wallet** when SOL
+> runs low.
 
 That's all. To let another badge in later, or change the key, open your worker in the
 Cloudflare dashboard: **Settings**, **Variables and Secrets**, edit the setting and press
@@ -92,13 +101,22 @@ Whatever your Connect wallet holds on Solana: SOL and any SPL token. **To add a 
 some to the wallet**; the badge lists it the next time you pick what to send, with your
 balance next to it. There's nothing to configure.
 
-- **Keep about 0.01 SOL in the wallet.** Every payment pays a small fee in SOL, and sending a
-  token to someone for the first time costs about 0.002 SOL to open their token account. The
-  badge never offers that last 0.01 SOL.
+- **Keep some SOL in the wallet** for fees (see [Add funds](#set-it-up)). The badge never
+  offers the last 0.01 SOL.
 - The smallest SOL payment is 0.001 SOL.
 - Token-2022 tokens can't be sent yet. The list shows up to 8 tokens, SOL first.
 - A Connect key allows 20 requests a minute. A payment takes a few, so that's plenty for one
   badge, not for a crowd sharing one key.
+
+## Before and after paying
+
+- **Reputation.** Before you pay, the badge shows what [Quidli Connect](https://connect.quid.li)
+  knows about the person: their Quidli score if they use Connect, and their X, Farcaster, Lens
+  or wallet reputation. It's there so you know you've got the right person. (For now the worker
+  also asks [Ethos](https://ethos.network) for the X reputation, which Connect leaves out for
+  some accounts.)
+- **Receipt.** After **Sent**, the badge shows the transaction as a QR code: scan it with your
+  phone to see it on [Solscan](https://solscan.io).
 
 ## Getting paid
 
@@ -109,6 +127,23 @@ an app or a wallet, and don't have to do anything first.
 To see and spend what they were sent, they sign in at [connect.quid.li](https://connect.quid.li)
 **with that X account**: it's the same wallet, already holding the payment. If they have a
 badge too, the setup above (about 10 minutes) lets them pay it forward from there.
+
+## If something goes wrong
+
+| The badge says | What to do |
+| --- | --- |
+| The worker answered 404 | The address has a typo. **Set up**, **Change worker address**; it's on the worker's **Domains** tab in Cloudflare. |
+| Badge … isn't on this worker's list | Add the id to `BADGE_IDS`: worker, **Settings**, **Variables and Secrets**, edit, **Rotate**. |
+| The worker has no CONNECT_API_KEY yet | Same place: add the `CONNECT_API_KEY` secret. |
+| Connect refused the worker's API key | The key was changed or revoked: copy it again from the **API Dashboard** tab and rotate the secret. |
+| Not a signed request from the badge app | The app's id and the worker's `APP_ID` differ (only if you published your own copy of the app). |
+| The badge server refused: the app needs a test run… | Not in the store yet: press **Run on badge** again (a test run lasts 12 hours). |
+| No Wi-Fi | Turn Wi-Fi on in the badge's Wi-Fi app. |
+| Low on SOL / Insufficient funds | Add SOL (see [Add funds](#set-it-up)). |
+| Payments fail with Smart Send errors | Turn on **Enable Smart Send** on connect.quid.li. |
+| No final answer yet | Press **Select** to retry: it's the same payment, never a second one. |
+
+Every failed call also prints its address and answer to the console under **Run on badge**.
 
 ## Safety
 

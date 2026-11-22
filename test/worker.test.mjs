@@ -131,6 +131,16 @@ test('/assets explains a wallet it cannot offer', async () => {
   assert.equal((await text({ status: 200, body: '{"walletAddress":"<b>not an address</b>","assets":[]}' })).wallet, undefined);
   assert.deepEqual(await text({ status: 401, body: '{"message":"Invalid API key"}' }), { text: "Connect refused the worker's API key." });
   assert.deepEqual(await text('timeout'), { text: "Connect didn't answer in time." });
+  // Tokens but almost no SOL: listed, with a warning (SOL itself is all kept for fees).
+  const lowSol = await text({ status: 200, body: JSON.stringify({ assets: [
+    { type: 'native', decimals: 9, balanceInWei: '11000000' },
+    { type: 'erc20', tokenContract: USDC, symbol: 'USDC', decimals: 6, balanceInWei: '3000000' }] }) });
+  assert.deepEqual(lowSol.assets.map((a) => a.id), ['sol', USDC]);
+  assert.equal(lowSol.note, 'Low on SOL: every payment pays its fee in SOL. Add some under Add funds.');
+  const lower = await text({ status: 200, body: JSON.stringify({ assets: [
+    { type: 'erc20', tokenContract: USDC, symbol: 'USDC', decimals: 6, balanceInWei: '3000000' }] }) });
+  assert.deepEqual(lower.assets.map((a) => a.id), [USDC], 'no SOL at all: tokens listed, with the warning');
+  assert.ok(lower.note);
   const many = Array.from({ length: 12 }, (_, i) => ({ type: 'erc20', tokenContract: USDC.slice(0, -2) + String(10 + i), symbol: 'T' + i, decimals: 0, balanceInWei: '3' }));
   reset(() => ({ status: 200, body: JSON.stringify({ assets: many }) }));
   assert.equal((await call(await badge('GET', '/assets'))).data.assets.length, 8, 'the list stays short');

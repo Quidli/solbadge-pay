@@ -355,7 +355,10 @@ local function confirm_pay(handle, a, amount)
   if cmp_units(units, to_units(a.max, a.dec)) > 0 then
     return ui.toast("You can send up to " .. a.max .. " " .. a.label)
   end
-  ui.confirm("Send " .. amount .. " " .. a.label .. " to @" .. handle .. " on " .. a.chain .. "?", function(yes)
+  -- A token payment also pays a fee in SOL, and opens the recipient's token account
+  -- (about 0.002 SOL) the first time they get that token: said before, not after.
+  local fee = a.id == "sol" and "" or " Fee: up to 0.002 SOL."
+  ui.confirm("Send " .. amount .. " " .. a.label .. " to @" .. handle .. " on " .. a.chain .. "?" .. fee, function(yes)
     if not yes then return end
     -- Saved before it is sent: the id has to outlive a lost answer or a restart.
     storage.set("pending", {id = uuid(), handle = handle, asset = a.id, units = units, amount = amount, label = a.label, chain = a.chain})
@@ -523,12 +526,13 @@ end
 -- Setup: which badge this is (the worker's BADGE_IDS needs it), where the
 -- worker is, and whether it lets this badge in.
 
--- "https://name.me.workers.dev/" or "name.me.workers.dev" -> the address, or nil.
+-- A worker's address is always name.account.workers.dev, and the app can only reach
+-- *.workers.dev, so ".workers.dev" may be left out: "pay.me" -> "https://pay.me.workers.dev".
+-- nil when the text isn't such an address.
 local function clean_address(text)
   local host = (text or ""):lower():gsub("%s", ""):gsub("^https://", ""):gsub("/+$", "")
-  if #host < 4 or #host > 100 or not host:match("^[%w%-]+%.[%w%-%.]+$") or host:find("%.%.") or host:sub(-1) == "." then
-    return nil
-  end
+  if not host:find("%.workers%.dev$") then host = host .. ".workers.dev" end
+  if #host > 100 or not host:match("^[%w][%w%-]*%.[%w][%w%-]*%.workers%.dev$") then return nil end
   return "https://" .. host
 end
 
@@ -567,7 +571,7 @@ local function setup_screen()
   if WORKER == "" then
     rows[#rows + 1] = {title = addr and "Change worker address" or "Enter worker address"}
     acts[#acts + 1] = function()
-      ui.input("Worker address (name.you.workers.dev)", 64, function(text)
+      ui.input("Worker address, e.g. pay.you", 64, function(text)
         if not text or text == "" then return end
         local a = clean_address(text)
         if not a then return ui.toast("That isn't an address") end
@@ -640,7 +644,12 @@ local function wallet_screen()
       if not status then return line:text(why(data)) end
       if status ~= 200 or not usable(data.assets) then return line:text(told(data, status)) end
       assets = data.assets
-      line:text("Ready to send (0.01 SOL is kept for fees)")
+      if type(data.note) == "string" then
+        line:text(data.note)
+        line:color("orange")
+      else
+        line:text("Ready to send (0.01 SOL is kept for fees)")
+      end
       local rows = {add}
       for i, a in ipairs(assets) do rows[i + 1] = {title = a.label, right = a.max} end
       list:items(rows)

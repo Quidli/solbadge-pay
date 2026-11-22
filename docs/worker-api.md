@@ -49,6 +49,7 @@ what to send, and again after each payment.
 - `id` is `sol` or the token's mint address.
 - `max` is the most one payment can be: the balance, less 0.01 SOL kept for fees.
 - `amounts` are up to four round amounts (1, 2 or 5 times a power of ten) up to `max`.
+- `note`, when present, is a warning to show with the list (low on SOL).
 - `wallet` is the Connect wallet's Solana address, for the app's **Add funds** QR
   code. It comes with the `{text}` answer for an empty wallet too.
 - At most 8 entries, SOL first. Amounts are decimal strings, never numbers: the
