@@ -409,6 +409,7 @@ typed("@quidliprotocol")
 sees("recipient shows the handle", "@quidliprotocol")
 sees("recipient shows social reputation", "Social reputation | 96")
 sees("recipient shows a category", "Farcaster reputation: 0.96")
+sees("Quidli Connect is credited, quietly", "Powered by Quidli Connect")
 check("the lookup goes to the worker", B.sent[#B.sent].method == "GET" and B.sent[#B.sent].url == ADDR .. "/score/quidliprotocol")
 key("select")
 sees("assets come from the wallet, with what each can send", "SOL  0.052096561 | Bonk  1234567.89012 | USDC  10")
@@ -426,6 +427,7 @@ check("the request says what, to whom, how much", body.asset == USDC and body.ha
 check("the request holds nothing else", (function() local n = 0 for _ in pairs(body) do n = n + 1 end return n end)() == 4)
 check("the payment id is a v4 UUID", body.id:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-4%x%x%x%-[89ab]%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"), body.id)
 sees("success screen", "Sent")
+sees("...credited to Quidli Connect", "Powered by Quidli Connect")
 check("pending cleared after success", storage.get("pending") == nil)
 check("LEDs on", B.leds == "on")
 key("select")
@@ -651,6 +653,20 @@ sees("an empty wallet is explained on the asset screen", "nothing to send on Sol
 key("back") key("back")
 pick("This badge")
 sees("setup says the badge is in but the wallet is empty", "The worker accepts this badge. The Connect wallet has nothing")
+
+-- 9a. The logo: shown when the badge draws images and quidli.png is bundled; text alone otherwise.
+launch()
+B.respond = a_worker({SENT})
+local drawn = {}
+ui.image = function(x, y, src) assert(src == "quidli.png") drawn[#drawn + 1] = src return {remove = function() end} end
+pick("Type an X handle") typed("quidliprotocol")
+check("the logo is drawn beside the credit", #drawn == 1 and screen():find("Powered by Quidli Connect", 1, true))
+key("back")
+ui.image = function() error("ui.image: no such file 'quidli.png'") end
+pick("Type an X handle") typed("quidliprotocol")
+check("no logo file: the credit alone, no crash", screen():find("Powered by Quidli Connect", 1, true))
+key("back")
+ui.image = nil
 
 -- 9b. The receipt: a sent payment shows its transaction on Solscan as a QR code.
 launch()

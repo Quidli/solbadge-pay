@@ -129,6 +129,14 @@ local function showing()
   return function() return g == gen end
 end
 
+-- "Powered by Quidli Connect" at the bottom of a screen, after Quidli's logo when the
+-- app bundles quidli.png (16 px tall) and the badge can show images (Solana OS 0.5.9).
+local function powered()
+  local x = 10
+  if ui.image and pcall(ui.image, 10, 180, "quidli.png") then x = 30 end
+  ui.label(x, 182, "Powered by Quidli Connect", {color = "dim", size = 12})
+end
+
 local function title(text, sub)
   ui.label(10, 6, text, {size = 20, w = ui.W - 20})
   if sub then ui.label(10, 32, sub, {color = "dim", w = ui.W - 20}) end
@@ -271,7 +279,7 @@ local function sending_screen()
   if type(p) ~= "table" then return home() end
   local what, chain = describe(p)
   title("Sending", what .. " on " .. chain)
-  local line = ui.label(10, 70, "Talking to Connect...", {w = ui.W - 20})
+  local line = ui.label(10, 70, "Sending with Quidli Connect...", {w = ui.W - 20})
   local detail = ui.label(10, 96, "", {w = ui.W - 20, color = "dim"})
   ui.hint("CANCEL home")
   local here = showing()
@@ -294,6 +302,7 @@ local function sending_screen()
       end
       led.fill(0x14, 0xF1, 0x95)
       timer.after(1500, led.off)
+      powered()
       ui.hint("SELECT done")
       keys = function(k) if k == "select" then home() return true end end
     elseif state == "processing" and tries < RETRY_MAX then
@@ -430,10 +439,11 @@ end
 
 local function recipient_screen(handle)
   title("@" .. handle)
-  local head = ui.label(10, 36, "Asking Connect...", {color = "dim", w = ui.W - 20})
+  local head = ui.label(10, 36, "Asking Quidli Connect...", {color = "dim", w = ui.W - 20})
   local big = ui.label(10, 56, "", {size = 32, color = "green"})
   local lines = {}
   for i = 1, 3 do lines[i] = ui.label(10, 100 + (i - 1) * 20, "", {w = ui.W - 20, color = "dim"}) end
+  powered()
   ui.hint("SELECT pay   CANCEL back")
   local here = showing()
 
