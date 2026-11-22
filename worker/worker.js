@@ -1,4 +1,4 @@
-// Connect Pay worker: stands between a Solana badge and Quidli Connect.
+// Solana Badge Pay worker: stands between a Solana badge and Quidli Connect.
 //
 // The badge holds no key. Every request it makes arrives signed by the badge
 // server, saying which badge and which app sent it. This worker checks that
@@ -238,7 +238,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (req.method === 'GET' && url.pathname === '/') {
-      return new Response('Connect Pay worker. It answers signed requests from the badge app only.\n');
+      return new Response('Solana Badge Pay worker. It answers signed requests from the badge app only.\n');
     }
     const body = req.method === 'POST' ? await req.text() : '';
     if (body.length > 2048) return json(413, { text: 'Request too big' });
