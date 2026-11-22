@@ -45,13 +45,9 @@ You need a badge, a free Cloudflare account, a GitHub account, and a Quidli Conn
 > everything in the wallet behind it. Use a separate Connect account just for the badge, and
 > keep only what you'd be fine losing if you left the badge on a table.
 
-**1. Get your badge's id.** Install **SolBadge Pay** on the badge and open it. The home
-screen shows **Set up**, with your badge id under it (like `7K2Q9M`).
-
-> Until SolBadge Pay is in the badge store, load it yourself: on the badge site, open
-> `/apps/submit` signed in with X linked, drop the `app/` folder on it, and press
-> **Run on badge**. Apps loaded this way can only reach the network during a 12-hour test
-> run, which **Run on badge** starts and renews.
+**1. Get your badge's id.** Install **SolBadge Pay** from the badge's App Store (under
+**Tools**) and open it. The home screen shows **Set up**, with your badge id under it (like
+`7K2Q9M`).
 
 **2. Deploy your worker.**
 
@@ -137,7 +133,7 @@ badge too, the setup above (about 10 minutes) lets them pay it forward from ther
 | The worker has no CONNECT_API_KEY yet | Same place: add the `CONNECT_API_KEY` secret. |
 | Connect refused the worker's API key | The key was changed or revoked: copy it again from the **API Dashboard** tab and rotate the secret. |
 | Not a signed request from the badge app | The app's id and the worker's `APP_ID` differ (only if you published your own copy of the app). |
-| The badge server refused: the app needs a test run… | Not in the store yet: press **Run on badge** again (a test run lasts 12 hours). |
+| The badge server refused: the app needs a test run… | Install SolBadge Pay from the App Store (this shows up only for a copy loaded by hand). |
 | No Wi-Fi | Turn Wi-Fi on in the badge's Wi-Fi app. |
 | Low on SOL / Insufficient funds | Add SOL (see [Add funds](#set-it-up)). |
 | Payments fail with Smart Send errors | Turn on **Enable Smart Send** on connect.quid.li. |
@@ -160,8 +156,10 @@ Every failed call also prints its address and answer to the console under **Run 
 
 - [`docs/worker-api.md`](docs/worker-api.md): what the badge and the worker say to each other,
   for writing your own worker or your own badge app.
-- [`app/`](app): the badge app (Lua). To publish your own version, give it a new `id` in
-  `app.json`, and set the worker's `APP_ID` var to match.
+- [`app/`](app): the badge app (Lua), as published in the store. To try changes, drop the
+  folder on the badge site's `/apps/submit` and press **Run on badge** (a 12-hour test run).
+  To publish your own version, give it a new `id` in `app.json`, and set the worker's
+  `APP_ID` var to match.
 - [`worker/`](worker): the worker, plain JavaScript, no build step.
 
 ## Tests
