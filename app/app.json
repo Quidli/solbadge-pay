@@ -3,7 +3,7 @@
   "name": "Connect Pay",
   "version": "0.3.0",
   "author": "@justinquidli",
-  "summary": "Pay anyone by their X username with Quidli Connect",
+  "summary": "Contactless Solana payments: pay nearby badges or anyone on X",
   "icon": "gift",
   "accent": "14F195",
   "category": "tools",

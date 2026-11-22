@@ -1,8 +1,11 @@
--- Connect Pay: pay anyone by X handle from the badge, through Quidli Connect.
+-- Connect Pay: contactless Solana payments from the badge, through Quidli Connect.
 --
--- Pick a badge nearby (or type a handle), see their social reputation, choose
--- an amount, confirm. The badge holds no key: it asks your own worker, which
--- recognises this badge by the badge server's signature and calls Connect.
+-- Pick a nearby badge (or type an X username), see the owner's social
+-- reputation, choose a token and an amount, confirm. Connect pays their X
+-- account from your Connect wallet. The badge holds no key: it asks your own
+-- worker, which recognises this badge by the badge server's signature and
+-- calls Connect. Add funds shows the wallet's address as a QR code.
+-- Setup and docs: https://github.com/Quidli/connectpay-solanabadge
 --
 -- Permissions: http, mesh, profile, led.   Hosts: your worker's host.
 
