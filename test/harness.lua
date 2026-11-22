@@ -135,6 +135,21 @@ function ui.list(x, y, w, h, items, opts)
   assert(y + h <= ui.H - 16 + 0.5, "list overlaps the hint")
   return setmetatable(obj("list", {it = items, sel = 1, on = opts and opts.on_select}), list_mt)
 end
+local qr_mt = {__index = {
+  text = function(o, t) assert(type(t) == "string" and #t <= 256, "qr text over 256 bytes") o.t = t end,
+  pos = function() end,
+  show = function(o, b) o.shown = b end,
+  remove = function(o) o.alive = false end,
+}}
+-- Solana OS 0.5.3: one QR code at a time, 25..218 px, text <= 256 bytes, and it must fit on screen.
+local function qr(x, y, size, text)
+  assert(type(text) == "string" and #text <= 256, "qr text over 256 bytes")
+  assert(size >= 25 and size <= 218, "qr size out of range")
+  assert(x >= 0 and y >= 0 and x + size <= ui.W and y + size <= ui.H - 16, "qr off screen or over the hint")
+  for _, o in ipairs(B.objs) do assert(not (o.alive and o.kind == "qr"), "a second QR code") end
+  return setmetatable(obj("qr", {t = text}), qr_mt)
+end
+ui.qr = qr
 function ui.hint(t) B.hint = t end
 function ui.toast(t) B.toasts[#B.toasts + 1] = t end
 function ui.confirm(t, cb) assert(not B.dialog, "dialog over dialog") B.dialog = {kind = "confirm", t = t, cb = cb} end
@@ -290,6 +305,7 @@ local function screen()                  -- every visible word, for checks
   for _, o in ipairs(B.objs) do
     if o.alive and o.shown then
       if o.kind == "label" then out[#out + 1] = o.t end
+      if o.kind == "qr" then out[#out + 1] = "[qr " .. o.t .. "]" end
       if o.kind == "list" then
         for _, it in ipairs(o.it) do
           out[#out + 1] = type(it) == "table" and ((it.title or "") .. " " .. (it.sub or "") .. " " .. (it.right or "")) or it
@@ -343,6 +359,7 @@ local function a_worker(pay_answers)
   end
 end
 local SENT = {status = 200, body = '{"state":"sent"}'}
+local USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 local PROCESSING = {status = 200, body = '{"state":"processing"}'}
 local function FAILED(text) return {status = 200, body = J.encode({state = "failed", text = text})} end
 local function UNKNOWN(text) return {status = 200, body = J.encode({state = "unknown", text = text})} end
@@ -391,7 +408,7 @@ sees("recipient shows social reputation", "Social reputation | 96")
 sees("recipient shows a category", "Farcaster reputation: 0.96")
 check("the lookup goes to the worker", B.sent[#B.sent].method == "GET" and B.sent[#B.sent].url == ADDR .. "/score/quidliprotocol")
 key("select")
-sees("assets come from the worker", "USDC  Solana | SOL  Solana | ETH  Base")
+sees("assets come from the wallet, with what each can send", "SOL  0.052096561 | Bonk  1234567.89012 | USDC  10")
 pick("USDC")
 sees("amount screen", "How much USDC?")
 pick("1 USDC")
@@ -401,7 +418,7 @@ key("select")
 local d = pays()
 check("one /pay after the confirm", #d == 1 and d[1].method == "POST")
 local body = J.decode(d[1].body)
-check("the request says what, to whom, how much", body.asset == "usdc-sol" and body.handle == "quidliprotocol" and body.amount == "1")
+check("the request says what, to whom, how much", body.asset == USDC and body.handle == "quidliprotocol" and body.units == "1000000", d[1].body)
 check("the request holds nothing else", (function() local n = 0 for _ in pairs(body) do n = n + 1 end return n end)() == 4)
 check("the payment id is a v4 UUID", body.id:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-4%x%x%x%-[89ab]%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"), body.id)
 sees("success screen", "Sent")
@@ -410,20 +427,26 @@ check("LEDs on", B.leds == "on")
 key("select")
 sees("done returns home", "Connect Pay")
 check("home no longer offers an unfinished payment", not screen():find("Unfinished"))
+local asked = 0
+for _, r in ipairs(B.sent) do if r.path == "/assets" then asked = asked + 1 end end
 check("no key in any request or in storage", no_secrets())
 
--- 3. Custom amounts, caps, decimals.
+-- 3. Custom amounts, the wallet's limit, decimals.
 local function to_amount(asset, amount)   -- from home, up to the confirm (or a toast)
   pick("Type an X handle") typed("quidliprotocol") key("select") pick(asset)
   if amount then pick("Other amount") typed(amount) end
 end
+local function assets_asked() local n = 0 for _, r in ipairs(B.sent) do if r.path == "/assets" then n = n + 1 end end return n end
+to_amount("USDC")
+check("after a payment the balances are asked for again", assets_asked() == asked + 1)
+key("back") key("back") key("back")
 to_amount("USDC", "1.5")
 sees("custom amount confirm", "Send 1.5 USDC")
 key("select")
-check("1.5 USDC is sent as typed", J.decode(pays()[2].body).amount == "1.5")
+check("1.5 USDC is sent in smallest units", J.decode(pays()[2].body).units == "1500000")
 key("select")
-to_amount("USDC", "5.01")
-check("over the cap is refused on the badge", B.toasts[#B.toasts] == "Most per payment: 5 USDC" and not B.dialog)
+to_amount("USDC", "10.01")
+check("more than the wallet holds is refused on the badge", B.toasts[#B.toasts] == "You can send up to 10 USDC" and not B.dialog, B.toasts[#B.toasts])
 pick("Other amount") typed("1.2345678")
 check("too many decimals is refused", B.toasts[#B.toasts] == "Too many decimals")
 for _, bad in ipairs({"0", "0.000", "1.", ".", "1,5", "-1", "1e3", "abc"}) do
@@ -434,20 +457,20 @@ pick("Other amount") typed(nil)
 check("cancelling the keyboard does nothing", not B.dialog)
 key("back") key("back") key("back")
 sees("three backs return home", "Pay anyone by their handle")
-to_amount("ETH", "0.0005")
-sees("ETH confirm names Base", "Send 0.0005 ETH to @quidliprotocol on Base?")
+to_amount("SOL", "0.005")
+sees("SOL confirm names Solana", "Send 0.005 SOL to @quidliprotocol on Solana?")
 key("select")
 body = J.decode(pays()[3].body)
-check("ETH on Base by its id", body.asset == "eth-base" and body.amount == "0.0005")
+check("SOL by its id, in lamports", body.asset == "sol" and body.units == "5000000", pays()[3].body)
 key("select")
-to_amount("ETH", "0.0021")
-check("18-decimal cap compares past 32-bit", B.toasts[#B.toasts] == "Most per payment: 0.002 ETH")
+to_amount("Bonk", "1234568")
+check("the limit compares past 32-bit", B.toasts[#B.toasts] == "You can send up to 1234567.89012 Bonk", B.toasts[#B.toasts])
 key("back") key("back") key("back")
 
 -- 4. "processing" twice, then sent: one payment id throughout.
 B.sent = {}
 B.respond = a_worker({PROCESSING, PROCESSING, SENT})
-to_amount("USDC") pick("0.50 USDC") key("select")
+to_amount("USDC") pick("2 USDC") key("select")
 sees("processing is shown", "setting up the recipient")
 check("still pending while processing", storage.get("pending") ~= nil)
 advance(3000) advance(3000)
@@ -603,6 +626,48 @@ B.respond = function(r)
 end
 pick("Type an X handle") typed("quidliprotocol") key("select")
 sees("a broken asset list is refused, not shown", "The worker's asset list can't be read.")
+local EMPTY = '{"text":"The Connect wallet has nothing to send on Solana yet. Add some SOL first."}'
+launch()
+B.respond = function(r)
+  if r.path == "/assets" then return {status = 200, body = EMPTY} end
+  return {status = 200, body = '{"score":1,"lines":[]}'}
+end
+pick("Type an X handle") typed("quidliprotocol") key("select")
+sees("an empty wallet is explained on the asset screen", "nothing to send on Solana yet")
+key("back") key("back")
+pick("This badge")
+sees("setup says the badge is in but the wallet is empty", "The worker accepts this badge. The Connect wallet has nothing")
+
+-- 10. Add funds: the wallet's address as a QR code, to scan with a phone wallet.
+local WALLET = "Badge4BJRYfnu29GPWdksz7EMUbiqx5CKSZgov3AHQXe"
+launch()
+B.respond = a_worker({SENT})
+pick("Add funds")
+sees("the wallet's address is a QR code", "[qr " .. WALLET .. "]")
+sees("...and written out, to check against the phone", "Badge4BJRYf | nu29GPWdksz | 7EMUbiqx5CK | SZgov3AHQXe")
+sees("it says what to send", "any SPL token")
+key("back")
+pick("Add funds")                         -- the stub refuses a second live QR code, so this proves the first went
+sees("opening it again draws it again", "[qr " .. WALLET .. "]")
+key("back")
+-- An empty wallet still shows where to send.
+B.respond = function(r) return {status = 200, body = EMPTY:sub(1, -2) .. ',"wallet":"' .. WALLET .. '"}'} end
+pick("Add funds")
+sees("an empty wallet still gets its QR code", "[qr " .. WALLET .. "]")
+key("back")
+-- Older Solana OS: no ui.qr. The address alone.
+ui.qr = nil
+pick("Add funds")
+sees("without QR codes, the address and why", "Update Solana OS to show it as a QR code.")
+sees("...still written out", "Badge4BJRYf")
+ui.qr = qr
+key("back")
+-- No address in the answer: say so, never draw a bad code.
+B.respond = function(r) return {status = 200, body = '{"text":"Connect refused the worker\'s API key."}'} end
+pick("Add funds")
+sees("no address: the worker's words", "Connect refused the worker's API key.")
+check("no QR code without an address", not screen():find("[qr", 1, true))
+key("back")
 
 check("no key in any request or in storage, to the end", no_secrets())
 on_exit()

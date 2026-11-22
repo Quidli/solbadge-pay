@@ -1,9 +1,9 @@
 {
   "id": "connect-pay",
   "name": "Connect Pay",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "@justinquidli",
-  "summary": "Pay anyone by their X handle with Quidli Connect.",
+  "summary": "Pay anyone by their X username with Quidli Connect",
   "icon": "gift",
   "accent": "14F195",
   "category": "tools",

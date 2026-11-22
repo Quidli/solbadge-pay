@@ -18,7 +18,7 @@ local WIFI_WAIT_S = 20    -- how long to wait for Wi-Fi after pausing the mesh
 -- ---------------------------------------------------------------------------
 -- Amounts. The badge's numbers are 32-bit, so smallest-unit amounts (up to 18
 -- decimals) are built and compared as strings of digits, never as numbers.
--- The worker checks every amount again; this is so the player hears early.
+-- The badge sends the amount in the token's smallest unit, worked out here.
 
 -- "1.5", 6 -> "1500000". nil plus a reason when the text isn't an amount.
 local function to_units(text, dec)
@@ -205,6 +205,9 @@ end
 -- is a final answer for it, so a lost answer is retried as the same payment
 -- and never as a second one.
 
+-- What the worker says can be sent (GET /assets), read once and again after a payment.
+local assets = nil
+
 local function describe(p)
   return p.amount .. " " .. p.label .. " to @" .. p.handle, p.chain
 end
@@ -231,7 +234,7 @@ local function send(p, done)
     done("failed", text)
   end
 
-  api("POST", "/pay", {id = p.id, handle = p.handle, asset = p.asset, amount = p.amount}, function(status, data)
+  api("POST", "/pay", {id = p.id, handle = p.handle, asset = p.asset, units = p.units}, function(status, data)
     if not status then
       if data == "timeout" then return done("unknown", why(data)) end
       return refused(why(data))           -- the request never left the badge server
@@ -267,6 +270,7 @@ local function sending_screen()
   local function finish(state, text)
     if not here() then return end
     if state == "sent" then
+      assets = nil                        -- the balances changed
       line:text("Sent")
       line:color("green")
       detail:text(what .. " on " .. chain)
@@ -325,20 +329,18 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Paying: asset, amount, confirm. What can be sent, and how much, is the
--- worker's list (GET /assets), read once per launch.
-
-local assets = nil
+-- worker's list (GET /assets): what the Connect wallet holds.
 
 local function confirm_pay(handle, a, amount)
   local units, err = to_units(amount, a.dec)
   if not units then return ui.toast(err) end
   if cmp_units(units, to_units(a.max, a.dec)) > 0 then
-    return ui.toast("Most per payment: " .. a.max .. " " .. a.label)
+    return ui.toast("You can send up to " .. a.max .. " " .. a.label)
   end
   ui.confirm("Send " .. amount .. " " .. a.label .. " to @" .. handle .. " on " .. a.chain .. "?", function(yes)
     if not yes then return end
     -- Saved before it is sent: the id has to outlive a lost answer or a restart.
-    storage.set("pending", {id = uuid(), handle = handle, asset = a.id, amount = amount, label = a.label, chain = a.chain})
+    storage.set("pending", {id = uuid(), handle = handle, asset = a.id, units = units, amount = amount, label = a.label, chain = a.chain})
     while #stack > 1 do stack[#stack] = nil end
     go(sending_screen)
   end)
@@ -379,7 +381,7 @@ local function asset_screen(handle)
   ui.hint("SELECT choose   CANCEL back")
   local function show()
     local rows = {}
-    for i, a in ipairs(assets) do rows[i] = {title = a.label, right = a.chain} end
+    for i, a in ipairs(assets) do rows[i] = {title = a.label, right = a.max} end
     ui.list(0, 56, ui.W, ui.H - 72, rows, {on_select = function(i)
       go(amount_screen, handle, assets[i])
     end})
@@ -393,7 +395,7 @@ local function asset_screen(handle)
     api("GET", "/assets", nil, function(status, data)
       if not here() then return end
       if not status then return line:text(why(data)) end
-      if status ~= 200 then return line:text(told(data, status)) end
+      if status ~= 200 or (data.text and not data.assets) then return line:text(told(data, status)) end
       if not usable(data.assets) then return line:text("The worker's asset list can't be read.") end
       assets = data.assets
       line:remove()
@@ -529,6 +531,10 @@ local function setup_screen()
         if not here() then return end
         if not status then return line:text(why(data)) end
         if status ~= 200 then return line:text(told(data, status)) end
+        if data.text and not data.assets then        -- the badge is in, Connect isn't ready
+          line:text("The worker accepts this badge. " .. data.text)
+          return line:color("orange")
+        end
         line:text("The worker accepts this badge.")
         line:color("green")
         if usable(data.assets) then assets = data.assets end
@@ -558,6 +564,43 @@ local function setup_screen()
   ask()
 end
 
+-- Add funds: the Connect wallet's Solana address as a QR code. Scan it with a
+-- phone wallet and send SOL or any SPL token; the badge lists what arrives.
+local function wallet_address(v)
+  if type(v) ~= "string" or #v < 32 or #v > 44 or v:find("[^1-9A-HJ-NP-Za-km-z]") then return nil end
+  return v
+end
+
+local function funds_screen()
+  title("Add funds")
+  local line = ui.label(10, 36, "Asking the worker...", {w = ui.W - 20, color = "dim"})
+  ui.hint("CANCEL back")
+  local here = showing()
+  when_online(function(up)
+    if not here() then return end
+    if not up then return line:text(why("offline")) end
+    api("GET", "/assets", nil, function(status, data)
+      if not here() then return end
+      if not status then return line:text(why(data)) end
+      if usable(data.assets) then assets = data.assets end
+      local addr = status == 200 and wallet_address(data.wallet)
+      if not addr then return line:text(told(data, status)) end
+      local x = 10                        -- the address, 11 characters a line
+      if ui.qr then
+        line:text("Scan with your phone's wallet app")
+        ui.qr(10, 56, 140, addr)
+        x = 162
+      else
+        line:text("Update Solana OS to show it as a QR code.")
+      end
+      for i = 0, 3 do
+        ui.label(x, 58 + i * 16, addr:sub(i * 11 + 1, i * 11 + 11), {size = 12, color = "text"})
+      end
+      ui.label(x, 132, "Send SOL or any SPL token. Keep 0.01 SOL for fees.", {w = ui.W - x - 10, color = "dim"})
+    end)
+  end)
+end
+
 local function home_screen()
   title("Connect Pay", "Pay anyone by their handle")
   local p = storage.get("pending")
@@ -580,6 +623,7 @@ local function home_screen()
         go(recipient_screen, handle)
       end)
     end)
+    row({title = "Add funds", sub = "Top up your Connect wallet"}, function() go(funds_screen) end)
     row({title = "This badge", right = badge.id() or "no id"}, function() go(setup_screen) end)
   end
   ui.list(0, 56, ui.W, ui.H - 72, rows, {on_select = function(i) acts[i]() end})

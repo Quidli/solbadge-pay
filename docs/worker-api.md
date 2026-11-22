@@ -33,14 +33,29 @@ Cloudflare in front of the worker) as "no final answer".
 
 ## GET /assets
 
-What this badge may send. The app reads it once per launch.
+What the badge can send: what the Connect wallet holds on Solana, from Connect's
+`GET /drop/balance?chainId=1399811149`. The app reads it when the player picks
+what to send, and again after each payment.
 
 ```json
-{"assets": [{"id": "usdc-sol", "label": "USDC", "chain": "Solana", "dec": 6,
-             "max": "5", "amounts": ["0.10", "0.50", "1", "2", "5"]}]}
+{"assets": [
+  {"id": "sol", "label": "SOL", "chain": "Solana", "dec": 9, "max": "0.052096561",
+   "amounts": ["0.005", "0.01", "0.02", "0.05"]},
+  {"id": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "label": "USDC", "chain": "Solana",
+   "dec": 6, "max": "10", "amounts": ["1", "2", "5", "10"]}
+], "wallet": "Badge4BJRYfnu29GPWdksz7EMUbiqx5CKSZgov3AHQXe"}
 ```
 
-Amounts are decimal strings, never numbers: the badge's numbers are 32-bit.
+- `id` is `sol` or the token's mint address.
+- `max` is the most one payment can be: the balance, less 0.01 SOL kept for fees.
+- `amounts` are up to four round amounts (1, 2 or 5 times a power of ten) up to `max`.
+- `wallet` is the Connect wallet's Solana address, for the app's **Add funds** QR
+  code. It comes with the `{text}` answer for an empty wallet too.
+- At most 8 entries, SOL first. Amounts are decimal strings, never numbers: the
+  badge's numbers are 32-bit.
+
+When there is nothing to offer (an empty wallet, a refused key, no answer from
+Connect), the answer is 200 with `{text}` alone, which the app shows.
 
 ## GET /score/&lt;handle&gt;
 
@@ -56,12 +71,14 @@ answer; the app shows the text. A handle that isn't 1 to 15 of `[A-Za-z0-9_]` ge
 ## POST /pay
 
 ```json
-{"id": "<uuid v4>", "handle": "quidliprotocol", "asset": "usdc-sol", "amount": "1"}
+{"id": "<uuid v4>", "handle": "quidliprotocol", "asset": "sol", "units": "5000000"}
 ```
 
-`id` is made by the badge and saved before the first try. The worker passes it
-to Connect's `POST /drop` as `idempotencyKey`, so every retry with the same id
-is the same payment.
+`asset` is an `id` from `/assets`; `units` is the amount in the token's smallest
+unit (here 0.005 SOL), worked out on the badge from `dec`. `id` is made by the
+badge and saved before the first try. The worker passes it to Connect's
+`POST /drop` as `idempotencyKey`, so every retry with the same id is the same
+payment.
 
 The answer is always 200 with a `state`:
 
@@ -69,7 +86,7 @@ The answer is always 200 with a `state`:
 | --- | --- | --- |
 | `sent` | Connect accepted the payment | Done; forgets it |
 | `processing` | Connect is setting up the recipient; nothing sent yet | Asks again with the same id shortly |
-| `failed` | This request sent nothing (bad input, over the cap, Connect refused) | Forgets it, unless an earlier try may have gone through |
+| `failed` | This request sent nothing (bad input, Connect refused) | Forgets it, unless an earlier try may have gone through |
 | `unknown` | No final answer (Connect timed out or answered 5xx) | Keeps it and offers a retry with the same id |
 
 `failed` and `unknown` carry `{text}` to show. The worker gives Connect 4.5 s,

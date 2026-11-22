@@ -3,12 +3,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import worker, { ASSETS, toUnits } from '../worker/worker.js';
+import worker, { fromUnits, quickPicks } from '../worker/worker.js';
 
 const HOST = 'https://connect-pay.example.workers.dev';
 const KEY = 'test-connect-key';
 const ENV = { CONNECT_API_KEY: KEY, BADGE_IDS: '7K2Q9M, 4HX2PD' }; // APP_ID left out: the default is connect-pay
 const SCORE = readFileSync(new URL('./data/score.json', import.meta.url), 'utf8');
+const BALANCE = readFileSync(new URL('./data/balance.json', import.meta.url), 'utf8'); // Connect's GET /drop/balance
+const USDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 // The badge server: an Ed25519 key pair, its public half served at /api/http/key.
 const pair = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
@@ -54,7 +56,7 @@ const call = async (req, env = ENV) => {
   assert.ok(text.length < 3500, 'answers fit the badge');
   return { status: res.status, data: text.startsWith('{') ? JSON.parse(text) : text };
 };
-const PAYMENT = { id: '3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b', handle: 'quidliprotocol', asset: 'usdc-sol', amount: '1' };
+const PAYMENT = { id: '3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b', handle: 'quidliprotocol', asset: USDC, units: '1000000' };
 const reset = (answer) => { connectCalls = []; connectAnswer = answer ?? (() => ({ status: 201, body: '{}' })); };
 
 test('requests without a valid badge signature are refused before Connect is touched', async () => {
@@ -62,7 +64,7 @@ test('requests without a valid badge signature are refused before Connect is tou
   assert.equal((await call(new Request(HOST + '/pay', { method: 'POST', body: JSON.stringify(PAYMENT) }))).status, 401);
   assert.equal((await call(await badge('POST', '/pay', PAYMENT, { app: 'someone-elses-app' }))).status, 401);
   assert.equal((await call(await badge('POST', '/pay', PAYMENT, { time: Date.now() - 120_000 }))).status, 401);
-  assert.equal((await call(await badge('POST', '/pay', PAYMENT, { over: { body: JSON.stringify({ ...PAYMENT, amount: '5' }) } }))).status, 401);
+  assert.equal((await call(await badge('POST', '/pay', PAYMENT, { over: { body: JSON.stringify({ ...PAYMENT, units: '5000000' }) } }))).status, 401);
   assert.equal((await call(await badge('POST', '/pay', PAYMENT, { over: { headers: { 'x-badge-id': '4HX2PD' } } }))).status, 401);
   assert.equal((await call(await badge('GET', '/assets', undefined, { over: { path: '/score/quidliprotocol' } }))).status, 401);
   assert.equal((await call(await badge('POST', '/pay', PAYMENT, { over: { headers: { 'x-badge-signature': '!!!' } } }))).status, 401);
@@ -95,14 +97,37 @@ test('a worker without a Connect key says so', async () => {
   assert.equal(connectCalls.length, 0);
 });
 
-test('/assets lists what the badge may send', async () => {
+test('/assets offers what the Connect wallet holds on Solana', async () => {
+  reset(() => ({ status: 200, body: BALANCE }));
   const r = await call(await badge('GET', '/assets'));
   assert.equal(r.status, 200);
-  assert.deepEqual(r.data.assets.map((a) => a.id), ASSETS.map((a) => a.id));
-  assert.deepEqual(Object.keys(r.data.assets[0]).sort(), ['amounts', 'chain', 'dec', 'id', 'label', 'max']);
-  // The Lua harness serves test/data/assets.json as the worker's list; keep it in step.
+  assert.equal(connectCalls[0].path, '/drop/balance?chainId=1399811149');
+  assert.equal(connectCalls[0].headers['x-api-key'], KEY);
+  const [sol, bonk, usdc] = r.data.assets;
+  assert.equal(r.data.assets.length, 3, 'entries Connect sent malformed are left out');
+  assert.equal(r.data.wallet, 'Badge4BJRYfnu29GPWdksz7EMUbiqx5CKSZgov3AHQXe', 'the address to top the wallet up');
+  assert.deepEqual(sol, { id: 'sol', label: 'SOL', chain: 'Solana', dec: 9, max: '0.052096561', amounts: ['0.005', '0.01', '0.02', '0.05'] },
+    'SOL first, with 0.01 SOL kept back for fees');
+  assert.deepEqual(bonk, { id: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', label: 'Bonk', chain: 'Solana', dec: 5, max: '1234567.89012', amounts: ['100000', '200000', '500000', '1000000'] });
+  assert.deepEqual(usdc, { id: USDC, label: 'USDC', chain: 'Solana', dec: 6, max: '10', amounts: ['1', '2', '5', '10'] });
+  // The Lua harness serves test/data/assets.json as the worker's answer; keep it in step.
   const fixture = JSON.parse(readFileSync(new URL('./data/assets.json', import.meta.url), 'utf8'));
-  assert.deepEqual(fixture, r.data, 'test/data/assets.json is out of date with ASSETS in worker.js');
+  assert.deepEqual(fixture, r.data, 'test/data/assets.json is out of date with the worker');
+});
+
+test('/assets explains a wallet it cannot offer', async () => {
+  const text = async (answer) => { reset(() => answer); return (await call(await badge('GET', '/assets'))).data; };
+  assert.deepEqual(await text({ status: 200, body: '{"assets":[{"type":"native","decimals":9,"balanceInWei":"9000000"}]}' }),
+    { text: 'The Connect wallet has nothing to send on Solana yet. Add some SOL first.' }, 'under 0.01 SOL is all kept for fees');
+  assert.deepEqual(await text({ status: 200, body: '{"walletAddress":"Badge4BJRYfnu29GPWdksz7EMUbiqx5CKSZgov3AHQXe","assets":[]}' }),
+    { text: 'The Connect wallet has nothing to send on Solana yet. Add some SOL first.', wallet: 'Badge4BJRYfnu29GPWdksz7EMUbiqx5CKSZgov3AHQXe' },
+    'an empty wallet still says where to send funds');
+  assert.equal((await text({ status: 200, body: '{"walletAddress":"<b>not an address</b>","assets":[]}' })).wallet, undefined);
+  assert.deepEqual(await text({ status: 401, body: '{"message":"Invalid API key"}' }), { text: "Connect refused the worker's API key." });
+  assert.deepEqual(await text('timeout'), { text: "Connect didn't answer in time." });
+  const many = Array.from({ length: 12 }, (_, i) => ({ type: 'erc20', tokenContract: USDC.slice(0, -2) + String(10 + i), symbol: 'T' + i, decimals: 0, balanceInWei: '3' }));
+  reset(() => ({ status: 200, body: JSON.stringify({ assets: many }) }));
+  assert.equal((await call(await badge('GET', '/assets'))).data.assets.length, 8, 'the list stays short');
 });
 
 test('/score trims Connect\'s answer for the badge', async () => {
@@ -129,28 +154,31 @@ test('/pay sends what the badge asked, with the worker\'s key', async () => {
   assert.equal(c.path, '/drop');
   assert.equal(c.headers['x-api-key'], KEY);
   assert.deepEqual(c.body, {
-    idempotencyKey: PAYMENT.id, chainId: 1399811149, tokenContract: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    idempotencyKey: PAYMENT.id, chainId: 1399811149, tokenContract: USDC,
     recipients: [{ type: 'twitter', username: 'quidliprotocol' }], amountInWeiPerRecipient: '1000000',
   });
   reset();
-  await call(await badge('POST', '/pay', { ...PAYMENT, asset: 'eth-base', amount: '0.0005' }));
-  assert.equal(connectCalls[0].body.amountInWeiPerRecipient, '500000000000000');
-  assert.equal(connectCalls[0].body.chainId, 8453);
-  assert.ok(!('tokenContract' in connectCalls[0].body));
+  await call(await badge('POST', '/pay', { ...PAYMENT, asset: 'sol', units: '5000000' }));
+  assert.equal(connectCalls[0].body.amountInWeiPerRecipient, '5000000');
+  assert.ok(!('tokenContract' in connectCalls[0].body), 'SOL is sent without a token');
+  reset();
+  await call(await badge('POST', '/pay', { ...PAYMENT, units: '123456789012345678901234567890' }));
+  assert.equal(connectCalls[0].body.amountInWeiPerRecipient, '123456789012345678901234567890', 'big amounts pass as written');
 });
 
 test('/pay refuses what it should, without calling Connect', async () => {
   reset();
   const bad = [
-    { amount: '5.01' }, { amount: '0' }, { amount: '0.000' }, { amount: '1.' }, { amount: '.' }, { amount: '1,5' },
-    { amount: '-1' }, { amount: '1e3' }, { amount: 1 }, { amount: '1.2345678' }, { amount: '' },
-    { asset: 'doge' }, { handle: 'not a handle' }, { handle: '' }, { id: 'not-a-uuid' }, { id: undefined },
+    { units: '0' }, { units: '007' }, { units: '1.5' }, { units: '-1' }, { units: '1e3' }, { units: 1 }, { units: '' }, { units: undefined },
+    { asset: 'doge' }, { asset: 'not a mint at all, not even close' }, { asset: undefined },
+    { asset: 'sol', units: '999999' },
+    { handle: 'not a handle' }, { handle: '' }, { id: 'not-a-uuid' }, { id: undefined },
   ];
   for (const change of bad) {
     const r = await call(await badge('POST', '/pay', { ...PAYMENT, ...change }));
     assert.equal(r.data.state, 'failed', JSON.stringify(change));
   }
-  assert.equal((await call(await badge('POST', '/pay', { ...PAYMENT, amount: '5.01' }))).data.text, 'Most per payment: 5 USDC');
+  assert.equal((await call(await badge('POST', '/pay', { ...PAYMENT, asset: 'sol', units: '999999' }))).data.text, 'The smallest SOL payment is 0.001 SOL.');
   assert.equal((await call(await badge('POST', '/pay', undefined, { over: {} }))).data.state, 'failed');
   assert.equal(connectCalls.length, 0);
 });
@@ -161,15 +189,19 @@ test('/pay turns Connect\'s answers into what the badge should do next', async (
   assert.equal((await state({ status: 202, body: '{}' })).state, 'processing');
   assert.deepEqual(await state('timeout'), { state: 'unknown', text: "Connect didn't answer in time." });
   assert.deepEqual(await state({ status: 502, body: '<html>bad gateway</html>' }), { state: 'unknown', text: 'Connect answered 502' });
-  assert.deepEqual(await state({ status: 400, body: '{"message":"Insufficient funds"}' }), { state: 'failed', text: 'Insufficient funds' });
+  assert.deepEqual(await state({ status: 400, body: '{"message":"Insufficient funds"}' }),
+    { state: 'failed', text: 'Insufficient funds. Sending a token also takes about 0.002 SOL in fees.' });
   assert.deepEqual(await state({ status: 400, body: '{"message":["first","second"]}' }), { state: 'failed', text: 'first' });
   assert.equal((await state({ status: 401, body: '{"message":"API key missing"}' })).text, "Connect refused the worker's API key.");
 });
 
-test('toUnits', () => {
-  assert.equal(toUnits('1.5', 6), '1500000');
-  assert.equal(toUnits('.5', 6), '500000');
-  assert.equal(toUnits('0.000001', 6), '1');
-  assert.equal(toUnits('007', 0), '7');
-  assert.equal(toUnits('0.0000001', 6), null);
+test('fromUnits and quickPicks', () => {
+  assert.equal(fromUnits('1500000', 6), '1.5');
+  assert.equal(fromUnits('1', 6), '0.000001');
+  assert.equal(fromUnits('10000000', 6), '10');
+  assert.equal(fromUnits('7', 0), '7');
+  assert.deepEqual(quickPicks(890000n, 1n).map(String), ['50000', '100000', '200000', '500000']);
+  assert.deepEqual(quickPicks(3n, 1n).map(String), ['1', '2']);
+  assert.deepEqual(quickPicks(10n ** 30n, 1n).length, 4);
+  assert.deepEqual(quickPicks(4n, 5n), []);
 });
