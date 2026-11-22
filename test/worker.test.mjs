@@ -136,6 +136,7 @@ test('/score trims Connect\'s answer for the badge', async () => {
   assert.equal(r.data.score, 96);
   assert.equal(r.data.lines[0], 'Farcaster reputation: 0.96');
   assert.equal(connectCalls[0].path, '/scores/twitter/quidliprotocol');
+  assert.ok(!('x-api-key' in connectCalls[0].headers), 'a reputation check goes without the key');
   reset(() => ({ status: 200, body: '{"quidliScore":null,"categories":{}}' }));
   assert.deepEqual((await call(await badge('GET', '/score/nobody'))).data, { score: null, lines: [] });
   // Not a Connect member, but Connect knows their X reputation (Connect's answer for @toly).

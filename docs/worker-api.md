@@ -59,7 +59,9 @@ Connect), the answer is 200 with `{text}` alone, which the app shows.
 
 ## GET /score/&lt;handle&gt;
 
-A handle's social reputation from Connect, cut down for the badge's screen.
+A handle's social reputation from Connect (`GET /scores/twitter/<handle>`, asked
+without the API key so the check never sets anything up on Connect), cut down for
+the badge's screen.
 
 ```json
 {"score": 96, "lines": ["Farcaster reputation: 0.96", "Lens reputation: 0.89"]}
