@@ -348,6 +348,7 @@ local function a_worker(pay_answers)
     if r.path == "/assets" then return {status = 200, body = ASSETS} end
     if r.path:find("^/score/") then
       if r.path:find("nobody") then return {status = 200, body = '{"score":null,"lines":[]}'} end
+      if r.path:find("toly") then return {status = 200, body = '{"score":null,"lines":["X reputation: 1985 (reputable)"]}'} end
       if r.path:find("limited") then return {status = 200, body = '{"text":"Too many requests"}'} end
       return {status = 200, body = '{"score":96,"lines":["Farcaster reputation: 0.96","Lens reputation: 0.89","Wallet reputation: 1200"]}'}
     end
@@ -603,6 +604,9 @@ launch()
 B.respond = a_worker({SENT})
 pick("Type an X handle") typed("nobody_here")
 sees("no reputation is stated plainly", "No social reputation on Connect yet")
+key("back")
+pick("Type an X handle") typed("toly")
+sees("no Quidli score, but what Connect knows is shown", "Social reputation |  | X reputation: 1985 (reputable)")
 key("back")
 pick("Type an X handle") typed("limited")
 sees("the worker's words are shown", "Too many requests")

@@ -437,10 +437,12 @@ local function recipient_screen(handle)
       if not here() then return end
       if not status then return head:text(why(data)) end
       if status ~= 200 or data.text then return head:text(told(data, status)) end
-      if data.score == nil then return head:text("No social reputation on Connect yet") end
+      local found = type(data.lines) == "table" and data.lines or {}
+      if data.score == nil and #found == 0 then return head:text("No social reputation on Connect yet") end
       head:text("Social reputation")
-      big:text(tostring(data.score))
-      for i, text in ipairs(type(data.lines) == "table" and data.lines or {}) do
+      -- No Quidli score (not a Connect member) can still come with what Connect knows.
+      if data.score ~= nil then big:text(tostring(data.score)) end
+      for i, text in ipairs(found) do
         if lines[i] and type(text) == "string" then lines[i]:text(text) end
       end
     end)

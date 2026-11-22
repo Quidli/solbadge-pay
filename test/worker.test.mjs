@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import worker, { fromUnits, quickPicks } from '../worker/worker.js';
+import worker, { fromUnits, quickPicks, scoreLine } from '../worker/worker.js';
 
 const HOST = 'https://connect-pay.example.workers.dev';
 const KEY = 'test-connect-key';
@@ -138,6 +138,9 @@ test('/score trims Connect\'s answer for the badge', async () => {
   assert.equal(connectCalls[0].path, '/scores/twitter/quidliprotocol');
   reset(() => ({ status: 200, body: '{"quidliScore":null,"categories":{}}' }));
   assert.deepEqual((await call(await badge('GET', '/score/nobody'))).data, { score: null, lines: [] });
+  // Not a Connect member, but Connect knows their X reputation (Connect's answer for @toly).
+  reset(() => ({ status: 200, body: '{"quidliScore":null,"categories":{"socials":[{"code":"ethos_twitter_reputation","label":"𝕏 reputation","source":"ethos","value":1985,"reference":"reputable","normalized":false}]}}' }));
+  assert.deepEqual((await call(await badge('GET', '/score/toly'))).data, { score: null, lines: ['X reputation: 1985 (reputable)'] });
   reset(() => ({ status: 429, body: '{"message":"Too many requests"}' }));
   assert.equal((await call(await badge('GET', '/score/nobody'))).data.text, 'Too many requests');
   reset();
@@ -193,6 +196,12 @@ test('/pay turns Connect\'s answers into what the badge should do next', async (
     { state: 'failed', text: 'Insufficient funds. Sending a token also takes about 0.002 SOL in fees.' });
   assert.deepEqual(await state({ status: 400, body: '{"message":["first","second"]}' }), { state: 'failed', text: 'first' });
   assert.equal((await state({ status: 401, body: '{"message":"API key missing"}' })).text, "Connect refused the worker's API key.");
+});
+
+test('scoreLine keeps to what the badge can draw', () => {
+  assert.equal(scoreLine({ label: '𝕏 reputation', value: 1985, reference: 'reputable' }), 'X reputation: 1985 (reputable)');
+  assert.equal(scoreLine({ label: 'Farcaster reputation', value: 0.96, reference: 0.96 }), 'Farcaster reputation: 0.96');
+  assert.equal(scoreLine({ label: 'Lens ✨ score', value: '9606', reference: '9606' }), 'Lens score: 9606');
 });
 
 test('fromUnits and quickPicks', () => {
