@@ -67,6 +67,11 @@ the badge's screen.
 {"score": 96, "lines": ["Farcaster reputation: 0.96", "Lens reputation: 0.89"]}
 ```
 
+Stopgap: once an X account belongs to a Connect user, Connect leaves its X
+reputation out, and a wallet Connect set up for someone who never used it scores
+0 (untrusted). So the worker also asks Ethos (`api.ethos.network`, public) for
+the X score when Connect's answer lacks it, and leaves out wallet scores of 0.
+
 `score` is `null` when Connect has none. `{text}` alone means Connect couldn't
 answer; the app shows the text. A handle that isn't 1 to 15 of `[A-Za-z0-9_]` gets 400.
 

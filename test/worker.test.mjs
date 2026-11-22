@@ -19,10 +19,16 @@ const b64 = (bytes) => btoa(String.fromCharCode(...bytes));
 
 let connectCalls = [];
 let connectAnswer = () => ({ status: 201, body: '{"status":"submitted"}' });
+let ethosAnswer = () => ({ status: 404, body: '{}' }); // Ethos knows nobody unless a test says so
 globalThis.fetch = async (url, init = {}) => {
   url = String(url);
   if (url === 'https://badge-api.solana.com/api/http/key') {
     return new Response(JSON.stringify({ id: 'k1', alg: 'Ed25519', key: b64(rawKey) }));
+  }
+  if (url.startsWith('https://api.ethos.network/api/v2/score/userkey?userkey=service:x.com:username:')) {
+    const a = ethosAnswer(url.split(':').pop());
+    if (a === 'timeout') throw new DOMException('timed out', 'TimeoutError');
+    return new Response(a.body, { status: a.status });
   }
   if (url.startsWith('https://api.connect.quid.li')) {
     const call = { method: init.method, path: url.slice('https://api.connect.quid.li'.length), headers: init.headers, body: init.body && JSON.parse(init.body) };
@@ -197,6 +203,30 @@ test('/pay turns Connect\'s answers into what the badge should do next', async (
     { state: 'failed', text: 'Insufficient funds. Sending a token also takes about 0.002 SOL in fees.' });
   assert.deepEqual(await state({ status: 400, body: '{"message":["first","second"]}' }), { state: 'failed', text: 'first' });
   assert.equal((await state({ status: 401, body: '{"message":"API key missing"}' })).text, "Connect refused the worker's API key.");
+});
+
+test('/score fills in the X reputation from Ethos when Connect leaves it out', async () => {
+  // @toly this afternoon: Connect has a fresh wallet scored 0 and no X reputation; Ethos has 1985.
+  reset(() => ({ status: 200, body: '{"quidliScore":null,"categories":{"wallets":[{"code":"ethos_wallet_reputation","label":"Wallet reputation","source":"ethos","value":0,"reference":"untrusted"}]}}' }));
+  ethosAnswer = (h) => (h === 'toly' ? { status: 200, body: '{"score":1985,"level":"reputable"}' } : { status: 404, body: '{}' });
+  assert.deepEqual((await call(await badge('GET', '/score/toly'))).data, { score: null, lines: ['X reputation: 1985 (reputable)'] });
+  // A real wallet score stays; Ethos's X score comes first.
+  reset(() => ({ status: 200, body: '{"quidliScore":99,"categories":{"wallets":[{"code":"ethos_wallet_reputation","label":"Wallet reputation","value":1231,"reference":"neutral"}]}}' }));
+  ethosAnswer = () => ({ status: 200, body: '{"score":1231,"level":"neutral"}' });
+  assert.deepEqual((await call(await badge('GET', '/score/ahn_going'))).data.lines, ['X reputation: 1231 (neutral)', 'Wallet reputation: 1231 (neutral)']);
+  // Connect already has it (@toly this morning): Connect's, not a second copy from Ethos.
+  reset(() => ({ status: 200, body: '{"quidliScore":null,"categories":{"socials":[{"code":"ethos_twitter_reputation","label":"𝕏 reputation","value":1985,"reference":"reputable"}]}}' }));
+  ethosAnswer = () => ({ status: 200, body: '{"score":1990,"level":"reputable"}' });
+  assert.deepEqual((await call(await badge('GET', '/score/toly'))).data.lines, ['X reputation: 1985 (reputable)']);
+  // Ethos down: Connect's answer alone.
+  reset(() => ({ status: 200, body: '{"quidliScore":null,"categories":{}}' }));
+  ethosAnswer = () => 'timeout';
+  assert.deepEqual((await call(await badge('GET', '/score/nobody'))).data, { score: null, lines: [] });
+  // Only a 0 wallet score: nothing to show.
+  reset(() => ({ status: 200, body: '{"quidliScore":null,"categories":{"wallets":[{"code":"ethos_wallet_reputation","label":"Wallet reputation","value":0,"reference":"untrusted"}]}}' }));
+  ethosAnswer = () => ({ status: 404, body: '{}' });
+  assert.deepEqual((await call(await badge('GET', '/score/fresh'))).data, { score: null, lines: [] });
+  ethosAnswer = () => ({ status: 404, body: '{}' });
 });
 
 test('scoreLine keeps to what the badge can draw', () => {
