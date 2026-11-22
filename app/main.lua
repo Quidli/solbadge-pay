@@ -129,12 +129,14 @@ local function showing()
   return function() return g == gen end
 end
 
--- "Powered by Quidli Connect" at the bottom of a screen, after Quidli's logo when the
--- app bundles quidli.png (16 px tall) and the badge can show images (Solana OS 0.5.9).
-local function powered()
+-- "Powered by Quidli Connect" at the bottom left of a screen, after Quidli's logo
+-- (quidli.png, 28 px tall) when the badge can show images (Solana OS 0.5.9). `w`
+-- narrows it, to share the bottom with a QR code; the words then take two lines.
+local function powered(w)
   local x = 10
-  if ui.image and pcall(ui.image, 10, 180, "quidli.png") then x = 30 end
-  ui.label(x, 182, "Powered by Quidli Connect", {color = "dim", size = 12})
+  if ui.image and pcall(ui.image, 10, 172, "quidli.png") then x = 44 end
+  w = w and (w - x) or (ui.W - x - 10)
+  ui.label(x, w < 180 and 172 or 180, "Powered by Quidli Connect", {color = "dim", size = 12, w = w})
 end
 
 local function title(text, sub)
@@ -294,15 +296,16 @@ local function sending_screen()
       line:color("green")
       detail:text(what .. " on " .. chain)
       -- The receipt: the transaction on Solscan, as a QR code to scan with a phone.
-      if ui.qr and type(tx) == "string" and #tx <= 90 and not tx:find("[^1-9A-HJ-NP-Za-km-z]") then
+      local screen_qr = ui.qr and type(tx) == "string" and #tx <= 90 and not tx:find("[^1-9A-HJ-NP-Za-km-z]")
+      if screen_qr then
         detail:remove()
         ui.label(10, 96, what .. " on " .. chain, {w = 140, color = "dim"})
-        ui.label(10, 160, "Scan for the receipt", {w = 140, color = "dim"})
+        ui.label(10, 136, "Scan for the receipt", {w = 140, color = "dim"})
         ui.qr(160, 48, 154, "https://solscan.io/tx/" .. tx)   -- as big as fits: about 3 px a square
       end
       led.fill(0x14, 0xF1, 0x95)
       timer.after(1500, led.off)
-      powered()
+      powered(screen_qr and 150 or nil)
       ui.hint("SELECT done")
       keys = function(k) if k == "select" then home() return true end end
     elseif state == "processing" and tries < RETRY_MAX then
