@@ -1,0 +1,1 @@
+{"assets":[{"id":"usdc-sol","label":"USDC","chain":"Solana","dec":6,"max":"5","amounts":["0.10","0.50","1","2","5"]},{"id":"sol","label":"SOL","chain":"Solana","dec":9,"max":"0.05","amounts":["0.001","0.005","0.01","0.05"]},{"id":"eth-base","label":"ETH","chain":"Base","dec":18,"max":"0.002","amounts":["0.0001","0.0005","0.001"]}]}

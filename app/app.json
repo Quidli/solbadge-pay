@@ -1,0 +1,12 @@
+{
+  "id": "connect-pay",
+  "name": "Connect Pay",
+  "version": "0.2.0",
+  "author": "@justinquidli",
+  "summary": "Pay anyone by their X handle with Quidli Connect.",
+  "icon": "gift",
+  "accent": "14F195",
+  "category": "tools",
+  "permissions": ["http", "mesh", "profile", "led"],
+  "hosts": ["*.workers.dev"]
+}

@@ -1,0 +1,18 @@
+name: test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Worker
+        run: node --test test/worker.test.mjs
+      - name: Badge app, on the badge's own Lua
+        run: |
+          git clone --depth 1 https://github.com/solana-foundation/solana-os
+          V=solana-os/main/lua/vendor
+          gcc -O1 -w -I$V -o runner test/runner.c $V/l*.c -lm
+          ./runner test/harness.lua app/main.lua test/data
